@@ -1,35 +1,58 @@
-
 const Like = require('../model/likes')
 const Post = require('../model/post')
 
+const unlikePost = async (req, res) => {
+    try {
+        const { post, like } = req.body
 
-const unlikePost = async (req ,res)=>{
+        // Verify post exists
+        const postExists = await Post.findById(post)
+        if (!postExists) {
+            return res.status(404).json({
+                success: false,
+                message: "Post not found",
+            })
+        }
 
-    try{
-        const{post,like} = req.body
-        console.log(post)
-        console.log(like)
+        // Verify like exists
+        const likeExists = await Like.findById(like)
+        if (!likeExists) {
+            return res.status(404).json({
+                success: false,
+                message: "Like not found",
+            })
+        }
 
-        const updatedUnlike = await Like.findByIdAndDelete(like)
-        console.log(updatedUnlike)
-        const updatedPost = await Post.findOneAndUpdate({_id:post},{$pull:{likes:updatedUnlike._id}},{new:true})
-        console.log(updatedUnlike)
+        // Delete like
+        await Like.findByIdAndDelete(like)
+
+        // Update post by removing like
+        const updatedPost = await Post.findByIdAndUpdate(
+            post,
+            { $pull: { likes: like } },
+            { new: true }
+        )
+            .populate('likes')
+            .exec()
 
         res.status(200).json({
-            post:updatedPost,
-            message : "Unliked Successfully." 
+            success: true,
+            message: "Post unliked successfully",
+            data: {
+                post: updatedPost
+            }
+        })
+    } catch (error) {
+        console.error("Unlike post error:", error)
+        res.status(500).json({
+            success: false,
+            message: "Failed to unlike post",
+            error: error.message,
         })
     }
-
-    catch(error){
-        res.send({
-             error:"Error in Uliking post"
-        })
-       
-
-    }
-
-
 }
+
+module.exports = unlikePost
+
 
 module.exports = unlikePost
